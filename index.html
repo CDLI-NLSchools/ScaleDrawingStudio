@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en-CA">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scale Drawing Studio: Math 2201</title>
+<style>
+  :root{
+    --ink:#1c2430; --muted:#5a6572; --accent:#0b5cad; --accent-dark:#084a8a;
+    --ok:#177245; --bad:#b3261e; --card:#ffffff; --bg:#eef2f6; --line:#d4dce4;
+    --soft:#f4f8fc; --warm:#b45309;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.45;}
+  .wrap{max-width:1020px;margin:0 auto;padding:16px 14px 48px;}
+  header{margin:10px 0 14px;}
+  h1{font-size:1.7rem;margin:0 0 2px;}
+  h2{font-size:1.3rem;margin:0 0 6px;}
+  h3{font-size:1.08rem;margin:0 0 8px;}
+  .subtitle{color:var(--muted);font-size:1rem;margin:0 0 8px;}
+  .instruction{font-size:1.02rem;margin:0;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:16px;margin:14px 0;box-shadow:0 1px 3px rgba(20,40,60,.06);}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+  .controls .spacer{flex:1;}
+  button,select,input{font:inherit;}
+  select,input[type="text"],input[type="number"]{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;min-height:44px;}
+  button{cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:#fff;
+    padding:9px 16px;border-radius:8px;min-height:44px;font-weight:600;}
+  button:hover{background:var(--accent-dark);}
+  button.secondary{background:#fff;color:var(--accent);}
+  button.secondary:hover{background:var(--soft);}
+  button:disabled{opacity:.55;cursor:default;}
+  button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px solid #f2b01e;outline-offset:2px;}
+  .modebtn{border:1px solid var(--accent);border-radius:8px;padding:9px 14px;min-height:44px;font-weight:600;color:var(--accent);background:#fff;cursor:pointer;}
+  .modebtn[aria-pressed="true"]{background:var(--accent);color:#fff;}
+  svg.stage{width:100%;height:auto;display:block;background:#fff;border:1px solid var(--line);border-radius:8px;touch-action:none;}
+  .fieldsrow{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin-top:12px;}
+  .field{display:flex;flex-direction:column;gap:3px;}
+  .field label{font-size:.88rem;color:var(--muted);font-weight:600;}
+  .field input.numin{width:140px;}
+  .unitlab{font-weight:600;padding-bottom:10px;}
+  .feedback{margin:10px 0 0;font-weight:600;min-height:1.3em;}
+  .feedback.ok{color:var(--ok);}
+  .feedback.bad{color:var(--bad);}
+  table.data{border-collapse:collapse;width:100%;font-size:.95rem;margin:8px 0 0;}
+  table.data th,table.data td{border:1px solid var(--line);padding:5px 8px;text-align:left;}
+  table.data th{background:var(--soft);}
+  .taskbox{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:14px 0 0;background:#fff;}
+  .taskbox h3{margin:0 0 4px;}
+  .taskbox p{margin:4px 0;}
+  .hint{color:var(--muted);font-size:.94rem;}
+  .statement{font-size:1.05rem;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:10px 0;}
+  .printsheet h2{margin-bottom:2px;}
+  .printsheet .meta{color:var(--muted);margin:0 0 8px;}
+  .ruled{border-bottom:1px solid #999;min-height:1.7em;margin:6px 0;}
+  .drawclone svg{width:100%;height:auto;border:1px solid #999;}
+  @media (max-width:680px){
+    h1{font-size:1.4rem;}
+  }
+  @media print{
+    body{background:#fff;}
+    .wrap{max-width:none;margin:0;padding:0;}
+    header,.controls,#measureSection,#drawSection{display:none !important;}
+    #printSheet{display:block !important;border:none;box-shadow:none;margin:0;padding:0;}
+    #printSheet .no-print{display:none !important;}
+    table.data th{background:#fff;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Scale Drawing Studio</h1>
+    <p class="subtitle">Math 2201, Unit 6: Proportional Reasoning (indicators 6.1, 6.2, 6.3, 6.4, 6.12)</p>
+    <p class="instruction">Every scale diagram follows one definition, stated in words: <strong>k = diagram measurement divided by actual measurement</strong>. First measure a diagram and state its scale factor. Then draw your own diagram to a stated scale on the grid canvas. This is practice only, and nothing you enter leaves this page.</p>
+  </header>
+
+  <div class="card controls no-print" role="group" aria-label="Activity controls">
+    <button type="button" class="modebtn" id="modeMeasureBtn" aria-pressed="true">Measure and Find k</button>
+    <button type="button" class="modebtn" id="modeDrawBtn" aria-pressed="false">Draw to Scale</button>
+    <span class="spacer"></span>
+    <button type="button" id="printBtnTop" class="secondary">Print my diagram sheet</button>
+  </div>
+
+  <main>
+  <section id="measureSection">
+    <div class="card">
+      <h2 id="measureTitle"></h2>
+      <p id="measureContext"></p>
+      <svg class="stage" id="measureSvg" viewBox="0 0 30 21" role="img" aria-label="Scale diagram with a draggable ruler. Measure the sides with the ruler, or use the step inputs below."></svg>
+      <div class="controls" style="margin-top:10px;">
+        <button type="button" id="rotateRulerBtn" class="secondary">Rotate ruler</button>
+        <button type="button" id="newMeasureBtn">New diagram</button>
+      </div>
+      <p class="hint">Drag the ruler so its zero lines up with one end of a side, then read the value where the other end falls. The ruler's centimetres are drawn to match the diagram, so they work at any screen size. You can also click the ruler and move it with the arrow keys (Shift moves it faster). Rotate it to measure the vertical side.</p>
+    </div>
+
+    <div class="card">
+      <h2>Work through the scale factor</h2>
+      <p class="statement" id="kStatement"></p>
+
+      <div class="taskbox">
+        <h3>Step 1: Measure the known side</h3>
+        <p id="step1Text"></p>
+        <div class="fieldsrow">
+          <div class="field">
+            <label for="knownDiagramInput">Diagram measurement</label>
+            <input type="text" inputmode="decimal" class="numin" id="knownDiagramInput" autocomplete="off">
+          </div>
+          <span class="unitlab">cm</span>
+          <button type="button" id="checkStep1Btn">Check measurement</button>
+        </div>
+        <p class="feedback" id="step1Feedback" aria-live="polite"></p>
+      </div>
+
+      <div class="taskbox">
+        <h3>Step 2: Put the actual measurement in centimetres</h3>
+        <p id="step2Text"></p>
+        <div class="fieldsrow">
+          <div class="field">
+            <label for="actualCmInput">Actual measurement</label>
+            <input type="text" inputmode="decimal" class="numin" id="actualCmInput" autocomplete="off">
+          </div>
+          <span class="unitlab">cm</span>
+          <button type="button" id="checkStep2Btn">Check conversion</button>
+        </div>
+        <p class="feedback" id="step2Feedback" aria-live="polite"></p>
+      </div>
+
+      <div class="taskbox">
+        <h3>Step 3: State the scale factor</h3>
+        <p>k = diagram measurement divided by actual measurement, using your two centimetre values.</p>
+        <div class="fieldsrow">
+          <div class="field">
+            <label for="kInput">Scale factor k (as a decimal)</label>
+            <input type="text" inputmode="decimal" class="numin" id="kInput" autocomplete="off">
+          </div>
+          <button type="button" id="checkStep3Btn">Check k</button>
+        </div>
+        <p class="feedback" id="step3Feedback" aria-live="polite"></p>
+      </div>
+
+      <div class="taskbox">
+        <h3>Step 4: Find the unknown dimension</h3>
+        <p id="step4Text"></p>
+        <div class="fieldsrow" id="step4MeasureRow">
+          <div class="field">
+            <label for="otherMeasureInput" id="otherMeasureLabel">Measure the other side</label>
+            <input type="text" inputmode="decimal" class="numin" id="otherMeasureInput" autocomplete="off">
+          </div>
+          <span class="unitlab">cm</span>
+        </div>
+        <div class="fieldsrow">
+          <div class="field">
+            <label for="unknownInput" id="unknownLabel">Unknown dimension</label>
+            <input type="text" inputmode="decimal" class="numin" id="unknownInput" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="unknownUnit">Unit</label>
+            <select id="unknownUnit"></select>
+          </div>
+          <button type="button" id="checkStep4Btn">Check the unknown</button>
+        </div>
+        <p class="feedback" id="step4Feedback" aria-live="polite"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="drawSection" class="hidden" style="display:none;">
+    <div class="card">
+      <h2 id="drawTitle">Draw to a stated scale</h2>
+      <p id="drawTaskText"></p>
+      <div id="drawRefWrap">
+        <h3>Original figure</h3>
+        <svg class="stage" id="refSvg" viewBox="0 0 20 14" role="img" aria-label="Original figure on a grid"></svg>
+      </div>
+      <h3>Your drawing grid</h3>
+      <svg class="stage" id="drawSvg" viewBox="0 0 20 14" role="img" aria-label="Drawing grid. Drag to draw a rectangle, or use the keyboard inputs below."></svg>
+      <p class="feedback" id="drawReadout" aria-live="polite"></p>
+      <div class="controls">
+        <button type="button" id="clearDrawBtn" class="secondary">Clear drawing</button>
+        <button type="button" id="checkDrawBtn">Check against the scale</button>
+        <button type="button" id="newDrawBtn">New drawing task</button>
+      </div>
+      <p class="feedback" id="drawFeedback" aria-live="polite"></p>
+    </div>
+    <div class="card">
+      <h2>Keyboard way to draw</h2>
+      <p>Enter the width and height of your rectangle in centimetres, then choose Place rectangle. It is drawn starting at the top left of the grid.</p>
+      <div class="fieldsrow">
+        <div class="field">
+          <label for="kbWidth">Width</label>
+          <input type="text" inputmode="decimal" class="numin" id="kbWidth" autocomplete="off">
+        </div>
+        <span class="unitlab">cm</span>
+        <div class="field">
+          <label for="kbHeight">Height</label>
+          <input type="text" inputmode="decimal" class="numin" id="kbHeight" autocomplete="off">
+        </div>
+        <span class="unitlab">cm</span>
+        <button type="button" id="kbPlaceBtn">Place rectangle</button>
+      </div>
+      <p class="feedback" id="kbFeedback" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section class="card printsheet" id="printSheet" aria-label="Printable scale diagram sheet">
+    <h2>Scale Diagram Sheet</h2>
+    <p class="meta">Name: ______________________________ &nbsp; Date: ______________</p>
+    <p id="sheetScaleLine"></p>
+    <h3>My scale diagram</h3>
+    <div class="drawclone" id="sheetDrawClone"></div>
+    <table class="data" id="sheetDrawTable" aria-label="Drawing task results"></table>
+    <h3>Measuring task</h3>
+    <table class="data" id="sheetMeasureTable" aria-label="Measuring task results"></table>
+    <h3>Say it in words</h3>
+    <p id="sheetStatement"></p>
+    <p>Explain how your diagram represents the real object:</p>
+    <div class="ruled"></div>
+    <div class="ruled"></div>
+    <p class="hint">This sheet is the artifact for your scale diagram: it can go in the assignment folder for the unit inquiry assignment.</p>
+    <div class="controls no-print">
+      <button type="button" id="printBtn">Print this sheet</button>
+    </div>
+  </section>
+  </main>
+</div>
+
+<script>
+"use strict";
+// ==GENERATOR==
+// Pure generator and checker logic for Scale Drawing Studio. No DOM access here.
+
+function makeRng(seed) {
+  var a = (seed >>> 0) || 2654435769;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function fmtNum(n) {
+  var r = Math.round(n * 100) / 100;
+  if (Math.abs(r - Math.round(r)) < 1e-9) return String(Math.round(r));
+  return String(Math.round(r * 10) / 10);
+}
+
+function pickR(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }
+
+// Curated measure scenarios. All lengths in centimetres.
+// knownActual = knownDiagram / k and otherActual = otherDiagram / k exactly.
+var SCENARIOS = [
+  { id: "garden", title: "Community garden plan",
+    thing: "community garden", diagramWord: "plan", kind: "reduction",
+    k: 0.01, knownD: 6, otherD: 4.5 },
+  { id: "garden2", title: "Vegetable garden plan",
+    thing: "vegetable garden", diagramWord: "plan", kind: "reduction",
+    k: 0.005, knownD: 7.5, otherD: 5 },
+  { id: "classroom", title: "Classroom floor plan",
+    thing: "classroom", diagramWord: "floor plan", kind: "reduction",
+    k: 0.01, knownD: 9, otherD: 6.5 },
+  { id: "hall", title: "Community hall floor plan",
+    thing: "community hall", diagramWord: "floor plan", kind: "reduction",
+    k: 0.005, knownD: 9, otherD: 6.5 },
+  { id: "court", title: "Ball hockey court diagram",
+    thing: "ball hockey court", diagramWord: "diagram", kind: "reduction",
+    k: 0.004, knownD: 10, otherD: 5 },
+  { id: "mural", title: "Wall mural design",
+    thing: "wall mural", diagramWord: "design", kind: "reduction",
+    k: 0.02, knownD: 7, otherD: 5 },
+  { id: "greenhouse", title: "Greenhouse plan",
+    thing: "greenhouse", diagramWord: "plan", kind: "reduction",
+    k: 0.01, knownD: 5, otherD: 3.5 },
+  { id: "poster", title: "Photo enlarged into a poster",
+    thing: "photo", diagramWord: "poster", kind: "enlargement",
+    k: 2, knownD: 9, otherD: 6 },
+  { id: "print", title: "Enlarged photo print",
+    thing: "photo", diagramWord: "print", kind: "enlargement",
+    k: 2.5, knownD: 10, otherD: 7.5 },
+  { id: "sign", title: "Enlarged logo for a sign",
+    thing: "logo", diagramWord: "sign", kind: "enlargement",
+    k: 3, knownD: 7.5, otherD: 4.5 }
+];
+
+// Actual length formatting: metres once the value reaches 100 cm.
+function fmtActual(cm) {
+  if (cm >= 100) return { value: cm / 100, unit: "m", text: fmtNum(cm / 100) + " m" };
+  return { value: cm, unit: "cm", text: fmtNum(cm) + " cm" };
+}
+
+function kLabel(k) {
+  if (k < 1) {
+    var n = 1 / k;
+    if (Math.abs(n - Math.round(n)) < 1e-9) return "1 to " + Math.round(n);
+    return fmtNum(k);
+  }
+  if (Math.abs(k - Math.round(k)) < 1e-9) return String(Math.round(k));
+  return fmtNum(k);
+}
+
+// The house convention, in words. Used in the page and the print sheet.
+var K_STATEMENT = "k = diagram measurement / actual measurement";
+
+function generateMeasureTask(rng) {
+  rng = rng || makeRng((Math.random() * 1000000000) | 0);
+  var sc = pickR(rng, SCENARIOS);
+  var direction = rng() < 0.5 ? "diagramToActual" : "actualToDiagram";
+  var knownA = sc.knownD / sc.k;
+  var otherA = sc.otherD / sc.k;
+  return {
+    scenarioId: sc.id, title: sc.title, thing: sc.thing,
+    diagramWord: sc.diagramWord, kind: sc.kind, k: sc.k,
+    knownDiagramCm: sc.knownD, knownActualCm: knownA,
+    otherDiagramCm: sc.otherD, otherActualCm: otherA,
+    direction: direction
+  };
+}
+
+// Step checks. Each returns {verdict, code} where code names the likely error.
+function checkMeasurement(entered, truthCm) {
+  if (!isFinite(entered)) return { verdict: false, code: "blank" };
+  if (Math.abs(entered - truthCm) <= 0.2) return { verdict: true, code: "correct" };
+  if (Math.abs(entered - truthCm) <= 0.5) return { verdict: false, code: "close" };
+  return { verdict: false, code: "off" };
+}
+
+function checkActualCm(entered, truthCm) {
+  if (!isFinite(entered)) return { verdict: false, code: "blank" };
+  if (Math.abs(entered - truthCm) <= Math.max(0.5, truthCm * 0.005)) return { verdict: true, code: "correct" };
+  // Entered the metre value as if it were centimetres (forgot to convert).
+  if (truthCm >= 100 && Math.abs(entered - truthCm / 100) <= 0.05) return { verdict: false, code: "unit" };
+  return { verdict: false, code: "off" };
+}
+
+function expectedK(task) { return task.knownDiagramCm / task.knownActualCm; }
+
+function classifyK(task, studentK) {
+  var exp = expectedK(task);
+  if (!isFinite(studentK)) return { verdict: false, code: "blank" };
+  if (Math.abs(studentK - exp) <= exp * 0.02) return { verdict: true, code: "correct" };
+  if (Math.abs(studentK - 1 / exp) <= (1 / exp) * 0.02) return { verdict: false, code: "reversed" };
+  if (Math.abs(studentK - exp * 100) <= exp * 100 * 0.02) return { verdict: false, code: "unit" };
+  if (Math.abs(studentK - exp) <= exp * 0.1) return { verdict: false, code: "close" };
+  return { verdict: false, code: "other" };
+}
+
+// Unknown dimension. expected is always returned in centimetres.
+function unknownExpected(task) {
+  if (task.direction === "diagramToActual") return task.otherActualCm;
+  return task.otherDiagramCm;
+}
+
+function classifyUnknown(task, studentCm) {
+  var exp = unknownExpected(task);
+  if (!isFinite(studentCm)) return { verdict: false, code: "blank" };
+  if (Math.abs(studentCm - exp) <= Math.max(0.05, exp * 0.02)) return { verdict: true, code: "correct" };
+  // The wrong-direction operation on the given value.
+  var wrongDir;
+  if (task.direction === "diagramToActual") wrongDir = task.otherDiagramCm * task.k;
+  else wrongDir = task.otherActualCm / task.k;
+  if (Math.abs(studentCm - wrongDir) <= Math.max(0.15, wrongDir * 0.03)) return { verdict: false, code: "direction" };
+  if (Math.abs(studentCm - exp * 100) <= exp * 100 * 0.02 || Math.abs(studentCm - exp / 100) <= Math.max(0.02, exp * 0.001)) {
+    return { verdict: false, code: "unit" };
+  }
+  if (Math.abs(studentCm - exp) <= exp * 0.1) return { verdict: false, code: "close" };
+  return { verdict: false, code: "other" };
+}
+
+// ---------- Drawing tasks ----------
+// Type A: draw a rectangle for a real object at a stated scale.
+//   form "per": 1 cm on the diagram represents per metres of actual length.
+//   form "ratio": scale 1 to N, actual lengths given in centimetres.
+// Type B: draw the image of a given rectangle under scale factor k.
+
+function generateDrawTask(rng) {
+  rng = rng || makeRng((Math.random() * 1000000000) | 0);
+  var type = rng() < 0.55 ? "A" : "B";
+  if (type === "A") {
+    var form = rng() < 0.6 ? "per" : "ratio";
+    if (form === "per") {
+      var per = pickR(rng, [1, 2, 3, 4]);
+      var aw = pickR(rng, [4, 6, 8, 9, 10, 12]);
+      var ah = pickR(rng, [3, 4, 5, 6, 8]);
+      var tw = aw / per, th = ah / per;
+      // Keep the target on the canvas and on half-centimetre steps.
+      if (tw > 16 || th > 10 || Math.abs(tw * 2 - Math.round(tw * 2)) > 1e-9 || Math.abs(th * 2 - Math.round(th * 2)) > 1e-9) {
+        return generateDrawTask(rng);
+      }
+      var things = ["garden bed", "sandbox", "vegetable plot", "deck", "flower bed", "storage shed floor"];
+      return {
+        type: "A", form: "per", thing: pickR(rng, things),
+        actualW: aw, actualH: ah, actualUnit: "m", per: per,
+        targetW: tw, targetH: th,
+        scaleText: "1 cm on the diagram represents " + per + (per === 1 ? " metre" : " metres"),
+        errorFactors: [per, 1 / per]
+      };
+    }
+    var n = pickR(rng, [50, 100, 200]);
+    var acmW = pickR(rng, [200, 300, 400, 500, 600, 800]);
+    var acmH = pickR(rng, [150, 200, 250, 300, 400]);
+    var tw2 = acmW / n, th2 = acmH / n;
+    if (tw2 > 16 || th2 > 10 || Math.abs(tw2 * 2 - Math.round(tw2 * 2)) > 1e-9 || Math.abs(th2 * 2 - Math.round(th2 * 2)) > 1e-9) {
+      return generateDrawTask(rng);
+    }
+    var things2 = ["classroom", "gymnasium floor", "greenhouse", "workshop", "skating rink surface", "library room"];
+    return {
+      type: "A", form: "ratio", thing: pickR(rng, things2),
+      actualW: acmW, actualH: acmH, actualUnit: "cm", ratioN: n,
+      targetW: tw2, targetH: th2,
+      scaleText: "scale 1 to " + n,
+      errorFactors: [n / 100, 100 / n]
+    };
+  }
+  // Type B
+  var k = pickR(rng, [0.5, 2, 3]);
+  var ow = pickR(rng, [2, 3, 4, 5, 6]);
+  var oh = pickR(rng, [2, 3, 4]);
+  if (ow === oh) oh = oh === 4 ? 3 : oh + 1;
+  var bw = ow * k, bh = oh * k;
+  if (bw > 16 || bh > 10) return generateDrawTask(rng);
+  return {
+    type: "B", form: "factor", origW: ow, origH: oh, k: k,
+    targetW: bw, targetH: bh,
+    scaleText: "scale factor k = " + fmtNum(k),
+    errorFactors: [1 / k, k, 1 / (k * k)]
+  };
+}
+
+function classifyDrawing(studentW, studentH, task) {
+  if (!isFinite(studentW) || !isFinite(studentH) || studentW <= 0 || studentH <= 0) {
+    return { verdict: false, code: "blank" };
+  }
+  var tw = task.targetW, th = task.targetH, tol = 0.3;
+  if (Math.abs(studentW - tw) <= tol && Math.abs(studentH - th) <= tol) return { verdict: true, code: "correct" };
+  if (Math.abs(studentW - th) <= tol && Math.abs(studentH - tw) <= tol && Math.abs(tw - th) > tol) {
+    return { verdict: false, code: "swapped" };
+  }
+  var rw = studentW / tw, rh = studentH / th;
+  if (Math.abs(rw - rh) <= 0.06) {
+    var r = (rw + rh) / 2;
+    for (var i = 0; i < task.errorFactors.length; i++) {
+      var f = task.errorFactors[i];
+      if (Math.abs(r - f) <= f * 0.06) return { verdict: false, code: "factor", factor: f };
+    }
+    if (Math.abs(r - 1) <= 0.15) return { verdict: false, code: "close" };
+    // A uniform ratio that is just one grid step on a small target is a slip, not a scale error.
+    if (Math.abs(studentW - tw) <= 0.6 && Math.abs(studentH - th) <= 0.6) return { verdict: false, code: "close" };
+    return { verdict: false, code: "factorOther", factor: r };
+  }
+  // Small absolute slips (about one grid step) with unequal ratios:
+  // one side on target points to that side only; both sides slipped is arithmetic.
+  var dw = Math.abs(studentW - tw), dh = Math.abs(studentH - th);
+  if (dw <= 0.75 && dh <= 0.75) {
+    if (dw <= 0.3 || dh <= 0.3) return { verdict: false, code: "oneside" };
+    return { verdict: false, code: "close" };
+  }
+  if (dw <= 0.3 || dh <= 0.3) return { verdict: false, code: "oneside" };
+  if (Math.abs(rw - 1) <= 0.2 && Math.abs(rh - 1) <= 0.2) return { verdict: false, code: "close" };
+  return { verdict: false, code: "other" };
+}
+// ==END GENERATOR==
+
+// ---------- Page wiring ----------
+var measureTask = null;
+var rulerState = { x: 3, y: 17.6, rot: 0 };
+var drawTask = null;
+var drawnRect = null; // {x, y, w, h} in cm on the drawing grid
+
+function $(id) { return document.getElementById(id); }
+function parseNum(id) {
+  var v = parseFloat(String($(id).value).replace(/,/g, ""));
+  return isFinite(v) ? v : NaN;
+}
+function svgEl(tag, attrs) {
+  var el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (var key in attrs) el.setAttribute(key, attrs[key]);
+  return el;
+}
+
+function gridLines(svg, w, h, step) {
+  for (var x = 0; x <= w + 1e-9; x += step) {
+    svg.appendChild(svgEl("line", { x1: x, y1: 0, x2: x, y2: h,
+      stroke: Math.abs(x - Math.round(x)) < 1e-9 ? "#d4dce4" : "#edf1f5", "stroke-width": 0.03 }));
+  }
+  for (var y = 0; y <= h + 1e-9; y += step) {
+    svg.appendChild(svgEl("line", { x1: 0, y1: y, x2: w, y2: y,
+      stroke: Math.abs(y - Math.round(y)) < 1e-9 ? "#d4dce4" : "#edf1f5", "stroke-width": 0.03 }));
+  }
+}
+
+// ----- Measure mode -----
+function renderMeasure() {
+  var svg = $("measureSvg");
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  gridLines(svg, 30, 21, 0.5);
+  var t = measureTask;
+  var x0 = 4, y0 = 4;
+  var rect = svgEl("rect", { x: x0, y: y0, width: t.knownDiagramCm, height: t.otherDiagramCm,
+    fill: "#dcebfb", stroke: "#0b5cad", "stroke-width": 0.09 });
+  svg.appendChild(rect);
+  var label = svgEl("text", { x: x0 + t.knownDiagramCm / 2, y: y0 + t.otherDiagramCm / 2 + 0.35,
+    "text-anchor": "middle", "font-size": 0.85, fill: "#1c2430" });
+  label.textContent = t.thing;
+  svg.appendChild(label);
+  // Known side bracket (top)
+  var kb = svgEl("text", { x: x0 + t.knownDiagramCm / 2, y: y0 - 0.7, "text-anchor": "middle", "font-size": 0.8, fill: "#b45309" });
+  kb.textContent = "known side: actual " + fmtActual(t.knownActualCm).text;
+  svg.appendChild(kb);
+  var wb = svgEl("text", { x: x0 + t.knownDiagramCm + 0.6, y: y0 + t.otherDiagramCm / 2 + 0.3, "font-size": 0.8, fill: "#b45309" });
+  wb.textContent = "unknown side";
+  svg.appendChild(wb);
+  renderRuler(svg);
+}
+
+function renderRuler(svg) {
+  var old = document.getElementById("rulerG");
+  if (old) old.parentNode.removeChild(old);
+  var g = svgEl("g", { id: "rulerG", tabindex: "0", role: "slider",
+    "aria-label": "Ruler. Arrow keys move it. Current position is adjustable by dragging.",
+    transform: "translate(" + rulerState.x + " " + rulerState.y + ") rotate(" + rulerState.rot + ")" });
+  g.appendChild(svgEl("rect", { x: 0, y: -1.5, width: 17, height: 1.5, fill: "rgba(242,176,30,0.30)", stroke: "#b45309", "stroke-width": 0.05 }));
+  for (var i = 0; i <= 170; i++) {
+    var x = i * 0.1;
+    var len = (i % 10 === 0) ? 0.85 : (i % 5 === 0 ? 0.6 : 0.38);
+    g.appendChild(svgEl("line", { x1: x, y1: 0, x2: x, y2: -len, stroke: "#7a4a06", "stroke-width": 0.035 }));
+    if (i % 10 === 0) {
+      var tx = svgEl("text", { x: x, y: -0.95, "text-anchor": "middle", "font-size": 0.55, fill: "#7a4a06" });
+      tx.textContent = String(i / 10);
+      g.appendChild(tx);
+    }
+  }
+  svg.appendChild(g);
+  attachRulerHandlers(g, svg);
+}
+
+function svgPoint(svg, evt) {
+  var pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  var m = svg.getScreenCTM();
+  if (!m) return { x: 0, y: 0 };
+  var p = pt.matrixTransform(m.inverse());
+  return { x: p.x, y: p.y };
+}
+
+function attachRulerHandlers(g, svg) {
+  var dragging = false, offX = 0, offY = 0;
+  g.addEventListener("pointerdown", function (evt) {
+    dragging = true;
+    var p = svgPoint(svg, evt);
+    offX = p.x - rulerState.x; offY = p.y - rulerState.y;
+    g.setPointerCapture(evt.pointerId);
+    evt.preventDefault();
+  });
+  g.addEventListener("pointermove", function (evt) {
+    if (!dragging) return;
+    var p = svgPoint(svg, evt);
+    rulerState.x = Math.round((p.x - offX) * 10) / 10;
+    rulerState.y = Math.round((p.y - offY) * 10) / 10;
+    g.setAttribute("transform", "translate(" + rulerState.x + " " + rulerState.y + ") rotate(" + rulerState.rot + ")");
+  });
+  g.addEventListener("pointerup", function () { dragging = false; });
+  g.addEventListener("keydown", function (evt) {
+    var step = evt.shiftKey ? 1 : 0.1;
+    var used = true;
+    if (evt.key === "ArrowLeft") rulerState.x -= step;
+    else if (evt.key === "ArrowRight") rulerState.x += step;
+    else if (evt.key === "ArrowUp") rulerState.y -= step;
+    else if (evt.key === "ArrowDown") rulerState.y += step;
+    else used = false;
+    if (used) {
+      rulerState.x = Math.round(rulerState.x * 10) / 10;
+      rulerState.y = Math.round(rulerState.y * 10) / 10;
+      g.setAttribute("transform", "translate(" + rulerState.x + " " + rulerState.y + ") rotate(" + rulerState.rot + ")");
+      evt.preventDefault();
+    }
+  });
+}
+
+function setupMeasure() {
+  measureTask = generateMeasureTask();
+  var t = measureTask;
+  rulerState = { x: 3, y: 17.6, rot: 0 };
+  $("measureTitle").textContent = t.title;
+  var knownFmt = fmtActual(t.knownActualCm);
+  if (t.kind === "reduction") {
+    $("measureContext").textContent = "This is a scale diagram (a " + t.diagramWord + ") of a " + t.thing +
+      ". The actual length of the " + t.thing + " is " + knownFmt.text +
+      ". Measure the length on the diagram, state the scale factor, then find the unknown width.";
+  } else {
+    $("measureContext").textContent = "A " + t.thing + " has been enlarged to make a " + t.diagramWord +
+      ". The " + t.diagramWord + " is the diagram (the image), and the " + t.thing + " is the actual (the original)." +
+      " The actual width of the " + t.thing + " is " + knownFmt.text +
+      ". Measure the width on the " + t.diagramWord + ", state the scale factor, then find the unknown height.";
+  }
+  $("kStatement").textContent = "Say it in words before you calculate: " + K_STATEMENT +
+    ". For this task, the diagram measurement is on the " + t.diagramWord +
+    " and the actual measurement is on the real " + t.thing + ".";
+  $("step1Text").textContent = "Use the ruler to measure the known side of the " + t.diagramWord + " (the side whose actual value is given).";
+  $("step2Text").textContent = "The actual measurement is " + knownFmt.text + ". Write it in centimetres so both measurements use the same unit.";
+  if (t.direction === "diagramToActual") {
+    $("step4Text").textContent = "Measure the other side of the " + t.diagramWord + " with the ruler, then calculate its actual size.";
+    $("otherMeasureLabel").textContent = "Other side, measured on the " + t.diagramWord;
+    $("unknownLabel").textContent = "Actual size of the other side";
+  } else {
+    $("step4Text").textContent = "The actual size of the other side is " + fmtActual(t.otherActualCm).text +
+      ". Calculate how long it should be on the " + t.diagramWord + ". You do not need to measure for this step.";
+    $("otherMeasureLabel").textContent = "Not needed for this direction";
+    $("unknownLabel").textContent = "Size on the " + t.diagramWord;
+  }
+  $("step4MeasureRow").style.display = t.direction === "diagramToActual" ? "" : "none";
+  var unitSel = $("unknownUnit");
+  while (unitSel.firstChild) unitSel.removeChild(unitSel.firstChild);
+  var units = t.kind === "reduction" ? ["cm", "m"] : ["cm"];
+  units.forEach(function (u) {
+    var opt = document.createElement("option");
+    opt.value = u; opt.textContent = u;
+    unitSel.appendChild(opt);
+  });
+  ["knownDiagramInput", "actualCmInput", "kInput", "otherMeasureInput", "unknownInput"].forEach(function (id) { $(id).value = ""; });
+  ["step1Feedback", "step2Feedback", "step3Feedback", "step4Feedback"].forEach(function (id) {
+    $(id).textContent = ""; $(id).className = "feedback";
+  });
+  renderMeasure();
+  updateSheet();
+}
+
+function setFeedback(id, ok, text) {
+  var el = $(id);
+  el.textContent = text;
+  el.className = "feedback " + (ok ? "ok" : "bad");
+}
+
+function checkStep1() {
+  var r = checkMeasurement(parseNum("knownDiagramInput"), measureTask.knownDiagramCm);
+  if (r.verdict) setFeedback("step1Feedback", true, "That matches the diagram: the known side measures " + fmtNum(measureTask.knownDiagramCm) + " cm on the " + measureTask.diagramWord + ".");
+  else if (r.code === "blank") setFeedback("step1Feedback", false, "Enter your ruler reading first.");
+  else if (r.code === "close") setFeedback("step1Feedback", false, "Close. Line the ruler's zero up with one end of the side and read exactly where the other end falls.");
+  else setFeedback("step1Feedback", false, "That reading is off. Make sure the ruler's zero is at one end of the known side, not at the edge of the ruler.");
+  updateSheet();
+}
+
+function checkStep2() {
+  var r = checkActualCm(parseNum("actualCmInput"), measureTask.knownActualCm);
+  if (r.verdict) setFeedback("step2Feedback", true, "Right: the actual measurement is " + fmtNum(measureTask.knownActualCm) + " cm. Both measurements are now in centimetres.");
+  else if (r.code === "unit") setFeedback("step2Feedback", false, "Unit mix-up: that is the value in metres. A scale factor needs both measurements in the same unit, so convert metres to centimetres (multiply by 100) before you divide.");
+  else if (r.code === "blank") setFeedback("step2Feedback", false, "Enter the actual measurement in centimetres first.");
+  else setFeedback("step2Feedback", false, "Not yet. Convert the given actual measurement to centimetres: 1 m = 100 cm.");
+  updateSheet();
+}
+
+function checkStep3() {
+  var r = classifyK(measureTask, parseNum("kInput"));
+  var exp = expectedK(measureTask);
+  if (r.verdict) setFeedback("step3Feedback", true, "Right: k = " + fmtNum(measureTask.knownDiagramCm) + " / " + fmtNum(measureTask.knownActualCm) + " = " + fmtNum(exp) + " (the scale " + kLabel(exp) + "). Diagram divided by actual, as stated.");
+  else if (r.code === "reversed") setFeedback("step3Feedback", false, "Wrong direction: that value is actual divided by diagram. The convention is k = diagram measurement / actual measurement, so the diagram value goes on top.");
+  else if (r.code === "unit") setFeedback("step3Feedback", false, "Unit mix-up: that k is 100 times too big, which happens when the actual measurement is used in metres while the diagram is in centimetres. Convert first, then divide.");
+  else if (r.code === "close") setFeedback("step3Feedback", false, "Close, so this looks like an arithmetic slip. Divide the diagram measurement by the actual measurement once more, carefully.");
+  else if (r.code === "blank") setFeedback("step3Feedback", false, "Enter your value for k first.");
+  else setFeedback("step3Feedback", false, "Not yet. k = diagram measurement / actual measurement, with both values in centimetres.");
+  updateSheet();
+}
+
+function checkStep4() {
+  var t = measureTask;
+  if (t.direction === "diagramToActual") {
+    var m = checkMeasurement(parseNum("otherMeasureInput"), t.otherDiagramCm);
+    if (!m.verdict) {
+      setFeedback("step4Feedback", false, m.code === "blank" ? "Measure the other side and enter the reading first." :
+        "Your ruler reading for the other side is off. Rotate the ruler and measure the vertical side again.");
+      return;
+    }
+  }
+  var raw = parseNum("unknownInput");
+  var studentCm = $("unknownUnit").value === "m" ? raw * 100 : raw;
+  var r = classifyUnknown(t, studentCm);
+  var exp = unknownExpected(t);
+  if (r.verdict) {
+    if (t.direction === "diagramToActual") setFeedback("step4Feedback", true, "Right: actual = diagram / k = " + fmtNum(t.otherDiagramCm) + " / " + fmtNum(t.k) + " = " + fmtActual(exp).text + ".");
+    else setFeedback("step4Feedback", true, "Right: diagram = k x actual = " + fmtNum(t.k) + " x " + fmtNum(t.otherActualCm) + " cm = " + fmtNum(exp) + " cm on the " + t.diagramWord + ".");
+  }
+  else if (r.code === "direction") setFeedback("step4Feedback", false, "Wrong direction: that answer comes from using k the other way. Since k = diagram / actual, going from the diagram back to the actual means dividing by k, and going from the actual to the diagram means multiplying by k.");
+  else if (r.code === "unit") setFeedback("step4Feedback", false, "Unit mix-up: your answer is off by a factor of 100. Check whether the value you used was in metres or centimetres.");
+  else if (r.code === "close") setFeedback("step4Feedback", false, "Close, so this looks like an arithmetic slip. Run the division or multiplication once more.");
+  else if (r.code === "blank") setFeedback("step4Feedback", false, "Enter your answer for the unknown dimension first.");
+  else setFeedback("step4Feedback", false, "Not yet. Decide which way you are going: diagram to actual divides by k; actual to diagram multiplies by k.");
+  updateSheet();
+}
+
+// ----- Draw mode -----
+function renderRef() {
+  var svg = $("refSvg");
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  gridLines(svg, 20, 14, 0.5);
+  if (!drawTask || drawTask.type !== "B") return;
+  var rect = svgEl("rect", { x: 1, y: 1, width: drawTask.origW, height: drawTask.origH,
+    fill: "#dcebfb", stroke: "#0b5cad", "stroke-width": 0.08 });
+  svg.appendChild(rect);
+  var tx = svgEl("text", { x: 1, y: 13.2, "font-size": 0.8, fill: "#1c2430" });
+  tx.textContent = "Original: " + fmtNum(drawTask.origW) + " cm by " + fmtNum(drawTask.origH) + " cm";
+  svg.appendChild(tx);
+}
+
+function renderDraw() {
+  var svg = $("drawSvg");
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  gridLines(svg, 20, 14, 0.5);
+  if (drawnRect) {
+    svg.appendChild(svgEl("rect", { x: drawnRect.x, y: drawnRect.y, width: drawnRect.w, height: drawnRect.h,
+      fill: "rgba(11,92,173,0.18)", stroke: "#0b5cad", "stroke-width": 0.08 }));
+  }
+  if (dragNow) {
+    svg.appendChild(svgEl("rect", { x: dragNow.x, y: dragNow.y, width: dragNow.w, height: dragNow.h,
+      fill: "rgba(242,176,30,0.20)", stroke: "#b45309", "stroke-width": 0.06, "stroke-dasharray": "0.3 0.2" }));
+  }
+}
+
+var dragNow = null;
+function snap05(v) { return Math.round(v * 2) / 2; }
+
+function setupDraw() {
+  drawTask = generateDrawTask();
+  drawnRect = null;
+  var t = drawTask;
+  if (t.type === "A" && t.form === "per") {
+    $("drawTaskText").textContent = "Draw a rectangle on the grid to represent a " + t.thing +
+      " that is actually " + fmtNum(t.actualW) + " m long and " + fmtNum(t.actualH) + " m wide." +
+      " Use this scale: " + t.scaleText + ". The grid squares are 0.5 cm. Drag on the grid to draw, or use the keyboard inputs below.";
+    $("drawRefWrap").style.display = "none";
+  } else if (t.type === "A") {
+    $("drawTaskText").textContent = "Draw a rectangle on the grid to represent a " + t.thing +
+      " that is actually " + fmtNum(t.actualW) + " cm long and " + fmtNum(t.actualH) + " cm wide." +
+      " Use this scale: " + t.scaleText + " (the " + t.thing + " is drawn " + t.ratioN + " times smaller)." +
+      " The grid squares are 0.5 cm. Drag on the grid to draw, or use the keyboard inputs below.";
+    $("drawRefWrap").style.display = "none";
+  } else {
+    $("drawTaskText").textContent = "The original figure is " + fmtNum(t.origW) + " cm by " + fmtNum(t.origH) +
+      " cm. Draw its image on the grid under " + t.scaleText +
+      ": every length on the image is " + fmtNum(t.k) + " times the matching length on the original." +
+      " The grid squares are 0.5 cm. Drag on the grid to draw, or use the keyboard inputs below.";
+    $("drawRefWrap").style.display = "";
+  }
+  $("drawFeedback").textContent = ""; $("drawFeedback").className = "feedback";
+  $("drawReadout").textContent = "Your rectangle: nothing drawn yet.";
+  $("kbWidth").value = ""; $("kbHeight").value = ""; $("kbFeedback").textContent = "";
+  renderRef();
+  renderDraw();
+  updateSheet();
+}
+
+function checkDraw() {
+  if (!drawnRect) {
+    setFeedback("drawFeedback", false, "Draw a rectangle first, by dragging on the grid or with the keyboard inputs.");
+    return;
+  }
+  var r = classifyDrawing(drawnRect.w, drawnRect.h, drawTask);
+  var t = drawTask;
+  var targetText = fmtNum(t.targetW) + " cm by " + fmtNum(t.targetH) + " cm";
+  if (r.verdict) setFeedback("drawFeedback", true, "That matches the scale: your rectangle is " + fmtNum(drawnRect.w) + " cm by " + fmtNum(drawnRect.h) + " cm, and the target is " + targetText + ". It is ready to print on the sheet below.");
+  else if (r.code === "swapped") setFeedback("drawFeedback", false, "Width and height are swapped: you drew " + fmtNum(drawnRect.w) + " cm by " + fmtNum(drawnRect.h) + " cm, and the target is " + targetText + ". Check which side is the length.");
+  else if (r.code === "factor") {
+    if (t.type === "A" && t.form === "per" && r.factor === t.per) setFeedback("drawFeedback", false, "Unit and scale mix-up: you used 1 cm for 1 metre, so your rectangle is " + fmtNum(r.factor) + " times too big. The scale says 1 cm stands for " + t.per + " m, so divide each actual length by " + t.per + ".");
+    else if (t.type === "B" && r.factor === 1 / t.k) setFeedback("drawFeedback", false, "That is the original size: the scale factor was not applied. Multiply each side of the original by k = " + fmtNum(t.k) + ".");
+    else if (t.type === "B" && r.factor === 1 / (t.k * t.k)) setFeedback("drawFeedback", false, "Wrong direction: you divided by k instead of multiplying. An image under k = " + fmtNum(t.k) + " has lengths " + fmtNum(t.k) + " times the original.");
+    else setFeedback("drawFeedback", false, "Your rectangle is off by a steady factor of about " + fmtNum(r.factor) + " on both sides, which points at the scale step. The target is " + targetText + ". Recompute each side from the stated scale.");
+  }
+  else if (r.code === "factorOther") setFeedback("drawFeedback", false, "Both sides are off by the same factor of about " + fmtNum(r.factor) + ", so the scale step went wrong somewhere. The target is " + targetText + ".");
+  else if (r.code === "oneside") setFeedback("drawFeedback", false, "One side matches the target (" + targetText + ") and the other does not. Recheck the side that is off; it is likely an arithmetic slip.");
+  else if (r.code === "close") setFeedback("drawFeedback", false, "Close: the target is " + targetText + ". This looks like an arithmetic slip in one of the divisions.");
+  else setFeedback("drawFeedback", false, "Not yet: the target under the stated scale is " + targetText + ". Work out each side from the scale first, then draw.");
+  updateSheet();
+}
+
+// ----- Print sheet -----
+function updateSheet() {
+  var t = measureTask;
+  if (t) {
+    var rows = [
+      ["Task", t.title],
+      ["Definition, in words", K_STATEMENT],
+      ["Known side on the diagram", fmtNum(t.knownDiagramCm) + " cm"],
+      ["Known side, actual", fmtActual(t.knownActualCm).text + " (" + fmtNum(t.knownActualCm) + " cm)"],
+      ["Scale factor", "k = " + fmtNum(t.k) + " (scale " + kLabel(t.k) + ")"],
+      ["Unknown side", t.direction === "diagramToActual"
+        ? "actual " + fmtActual(t.otherActualCm).text + ", from a diagram measurement of " + fmtNum(t.otherDiagramCm) + " cm"
+        : fmtNum(t.otherDiagramCm) + " cm on the " + t.diagramWord + ", from an actual " + fmtActual(t.otherActualCm).text]
+    ];
+    var html = "<tr><th>Item</th><th>Value</th></tr>";
+    rows.forEach(function (r) { html += "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>"; });
+    $("sheetMeasureTable").innerHTML = html;
+    $("sheetStatement").textContent = "On this task the diagram measurement is on the " + t.diagramWord +
+      " and the actual measurement is on the real " + t.thing + ", and k = diagram measurement / actual measurement = " +
+      fmtNum(t.k) + ".";
+  }
+  var d = drawTask;
+  var dhtml = "<tr><th>Item</th><th>Value</th></tr>";
+  if (d) {
+    dhtml += "<tr><td>Drawing task</td><td>" + (d.type === "A"
+      ? "Rectangle for a " + d.thing + ", actual " + fmtNum(d.actualW) + " " + d.actualUnit + " by " + fmtNum(d.actualH) + " " + d.actualUnit + ", at " + d.scaleText
+      : "Image of a " + fmtNum(d.origW) + " cm by " + fmtNum(d.origH) + " cm rectangle at " + d.scaleText) + "</td></tr>";
+    dhtml += "<tr><td>Target size on the diagram</td><td>" + fmtNum(d.targetW) + " cm by " + fmtNum(d.targetH) + " cm</td></tr>";
+    dhtml += "<tr><td>My drawn size</td><td>" + (drawnRect ? fmtNum(drawnRect.w) + " cm by " + fmtNum(drawnRect.h) + " cm" : "not drawn yet") + "</td></tr>";
+    $("sheetScaleLine").textContent = "Stated scale: " + d.scaleText + ".";
+  }
+  $("sheetDrawTable").innerHTML = dhtml;
+  // Clone the drawing grid (with the student's rectangle) into the sheet.
+  var cloneHost = $("sheetDrawClone");
+  while (cloneHost.firstChild) cloneHost.removeChild(cloneHost.firstChild);
+  var src = $("drawSvg");
+  if (src) {
+    var clone = src.cloneNode(true);
+    clone.removeAttribute("id");
+    cloneHost.appendChild(clone);
+  }
+}
+
+// ----- Mode switching -----
+function setMode(draw) {
+  $("drawSection").style.display = draw ? "" : "none";
+  $("measureSection").style.display = draw ? "none" : "";
+  $("modeDrawBtn").setAttribute("aria-pressed", draw ? "true" : "false");
+  $("modeMeasureBtn").setAttribute("aria-pressed", draw ? "false" : "true");
+}
+
+function init() {
+  setupMeasure();
+  setupDraw();
+  setMode(false);
+  $("modeMeasureBtn").addEventListener("click", function () { setMode(false); });
+  $("modeDrawBtn").addEventListener("click", function () { setMode(true); });
+  $("rotateRulerBtn").addEventListener("click", function () {
+    rulerState.rot = rulerState.rot === 0 ? 90 : 0;
+    renderMeasure();
+  });
+  $("newMeasureBtn").addEventListener("click", setupMeasure);
+  $("checkStep1Btn").addEventListener("click", checkStep1);
+  $("checkStep2Btn").addEventListener("click", checkStep2);
+  $("checkStep3Btn").addEventListener("click", checkStep3);
+  $("checkStep4Btn").addEventListener("click", checkStep4);
+  $("clearDrawBtn").addEventListener("click", function () {
+    drawnRect = null; renderDraw();
+    $("drawReadout").textContent = "Your rectangle: nothing drawn yet.";
+    updateSheet();
+  });
+  $("checkDrawBtn").addEventListener("click", checkDraw);
+  $("newDrawBtn").addEventListener("click", setupDraw);
+  $("kbPlaceBtn").addEventListener("click", function () {
+    var w = parseNum("kbWidth"), h = parseNum("kbHeight");
+    if (!isFinite(w) || !isFinite(h) || w <= 0 || h <= 0 || w > 19 || h > 13) {
+      setFeedback("kbFeedback", false, "Enter a width up to 19 cm and a height up to 13 cm, both matching the 0.5 cm grid.");
+      return;
+    }
+    drawnRect = { x: 0.5, y: 0.5, w: snap05(w), h: snap05(h) };
+    renderDraw();
+    $("drawReadout").textContent = "Your rectangle: " + fmtNum(drawnRect.w) + " cm wide by " + fmtNum(drawnRect.h) + " cm high.";
+    setFeedback("kbFeedback", true, "Placed. Now check it against the scale.");
+    updateSheet();
+  });
+  var svg = $("drawSvg");
+  var dragStart = null;
+  svg.addEventListener("pointerdown", function (evt) {
+    var p = svgPoint(svg, evt);
+    dragStart = { x: snap05(Math.max(0, Math.min(20, p.x))), y: snap05(Math.max(0, Math.min(14, p.y))) };
+    dragNow = { x: dragStart.x, y: dragStart.y, w: 0, h: 0 };
+    svg.setPointerCapture(evt.pointerId);
+    evt.preventDefault();
+  });
+  svg.addEventListener("pointermove", function (evt) {
+    if (!dragStart) return;
+    var p = svgPoint(svg, evt);
+    var cx = snap05(Math.max(0, Math.min(20, p.x))), cy = snap05(Math.max(0, Math.min(14, p.y)));
+    dragNow = { x: Math.min(dragStart.x, cx), y: Math.min(dragStart.y, cy),
+      w: Math.abs(cx - dragStart.x), h: Math.abs(cy - dragStart.y) };
+    renderDraw();
+    $("drawReadout").textContent = "Drawing: " + fmtNum(dragNow.w) + " cm wide by " + fmtNum(dragNow.h) + " cm high.";
+  });
+  svg.addEventListener("pointerup", function () {
+    if (dragNow && dragNow.w > 0 && dragNow.h > 0) {
+      drawnRect = { x: dragNow.x, y: dragNow.y, w: dragNow.w, h: dragNow.h };
+      $("drawReadout").textContent = "Your rectangle: " + fmtNum(drawnRect.w) + " cm wide by " + fmtNum(drawnRect.h) + " cm high.";
+    }
+    dragNow = null; dragStart = null;
+    renderDraw();
+    updateSheet();
+  });
+  $("printBtn").addEventListener("click", function () { updateSheet(); window.print(); });
+  $("printBtnTop").addEventListener("click", function () { updateSheet(); window.print(); });
+}
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
